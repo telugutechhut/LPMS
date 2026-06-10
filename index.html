@@ -1,0 +1,2234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coordinate Polygon + QR Reader</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  >
+  <style>
+    :root {
+      --bg: #efe7d3;
+      --panel: rgba(253, 249, 239, 0.92);
+      --panel-strong: #fffaf0;
+      --ink: #1b2230;
+      --muted: #5f6878;
+      --accent: #d97706;
+      --accent-dark: #a84c00;
+      --accent-soft: rgba(217, 119, 6, 0.14);
+      --line: rgba(27, 34, 48, 0.12);
+      --success: #0f766e;
+      --danger: #b42318;
+      --shadow: 0 22px 50px rgba(55, 44, 21, 0.12);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Aptos", "Segoe UI", sans-serif;
+      color: var(--ink);
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at top left, rgba(217, 119, 6, 0.18), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.15), transparent 26%),
+        linear-gradient(180deg, #f7f0df 0%, #eee2c7 100%);
+    }
+
+    .shell {
+      width: min(1380px, calc(100% - 32px));
+      margin: 24px auto 32px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .hero,
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -120px -120px auto;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(217, 119, 6, 0.18), transparent 65%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(27, 34, 48, 0.06);
+      color: var(--muted);
+      font-size: 0.9rem;
+      letter-spacing: 0.03em;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-family: "Cambria", "Georgia", serif;
+      font-size: clamp(2rem, 3vw, 3.3rem);
+      line-height: 1.05;
+    }
+
+    .hero p {
+      max-width: 880px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.03rem;
+      line-height: 1.65;
+    }
+
+    .controls {
+      padding: 16px 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .field-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--ink);
+      padding: 14px 16px;
+      font: inherit;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    input[type="file"] {
+      padding: 12px 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 244, 233, 0.96));
+    }
+
+    input[type="file"]:focus,
+    input[type="text"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: rgba(217, 119, 6, 0.7);
+      box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.16);
+      transform: translateY(-1px);
+    }
+
+    textarea {
+      min-height: 240px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .button-row button {
+      width: 100%;
+      min-width: 0;
+      white-space: nowrap;
+      padding: 10px 12px;
+      font-size: 0.92rem;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(27, 34, 48, 0.16);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent) 0%, #f59e0b 100%);
+      color: #fff;
+    }
+
+    .secondary {
+      background: rgba(27, 34, 48, 0.08);
+      color: var(--ink);
+    }
+
+    .ghost {
+      background: rgba(15, 118, 110, 0.12);
+      color: var(--success);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      min-width: 0;
+      padding: 10px 10px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.74);
+    }
+
+    .stat small {
+      display: block;
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.66rem;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 0.96rem;
+      line-height: 1.1;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .panel {
+      padding: 22px;
+    }
+
+    .panel h2 {
+      margin: 0 0 14px;
+      font-size: 1.16rem;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .panel-note {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    #map {
+      min-height: 620px;
+      height: min(74svh, 860px);
+      border-radius: 22px;
+      overflow: hidden;
+      background:
+        linear-gradient(140deg, rgba(27, 34, 48, 0.9), rgba(35, 42, 58, 0.88)),
+        radial-gradient(circle at top, rgba(245, 158, 11, 0.2), transparent 32%);
+      position: relative;
+    }
+
+    .map-panel {
+      padding-bottom: 26px;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .accordion-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .fold-panel {
+      border: 1px solid rgba(27, 34, 48, 0.08);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.76);
+      overflow: hidden;
+    }
+
+    .fold-panel summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      font-weight: 700;
+      user-select: none;
+    }
+
+    .fold-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .fold-panel summary::after {
+      content: "+";
+      font-size: 1.2rem;
+      color: var(--accent-dark);
+    }
+
+    .fold-panel[open] summary::after {
+      content: "-";
+    }
+
+    .fold-body {
+      padding: 0 18px 18px;
+    }
+
+    .leaflet-container {
+      width: 100%;
+      height: 100%;
+      font: inherit;
+      background: #1c2838;
+    }
+
+    .leaflet-control-attribution {
+      font-size: 0.72rem;
+    }
+
+    .map-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 24px;
+      color: rgba(255, 255, 255, 0.92);
+      background: linear-gradient(180deg, rgba(14, 21, 31, 0.48), rgba(14, 21, 31, 0.76));
+    }
+
+    .map-overlay.hidden {
+      display: none;
+    }
+
+    .map-overlay strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.08rem;
+    }
+
+    .status-box {
+      display: grid;
+      gap: 8px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid rgba(255, 255, 255, 0.82);
+    }
+
+    .status-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    .status-line::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-top: 0.34rem;
+      background: rgba(27, 34, 48, 0.18);
+      flex: 0 0 auto;
+    }
+
+    .status-line.success::before {
+      background: var(--success);
+    }
+
+    .status-line.error::before {
+      background: var(--danger);
+    }
+
+    .status-line.info::before {
+      background: var(--accent);
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 520px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(27, 34, 48, 0.08);
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: rgba(255, 248, 235, 0.98);
+      z-index: 1;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .empty {
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.65);
+      color: var(--muted);
+      border: 1px dashed rgba(27, 34, 48, 0.16);
+      line-height: 1.55;
+    }
+
+    .qr-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .qr-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(27, 34, 48, 0.08);
+      background: rgba(255, 255, 255, 0.75);
+    }
+
+    .qr-card strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 0.94rem;
+    }
+
+    .qr-card ol {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .url-card h3 {
+      margin: 10px 0 8px;
+      font-size: 1rem;
+      line-height: 1.35;
+    }
+
+    .url-card p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .url-lines {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+      line-height: 1.58;
+    }
+
+    .link-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .link-row a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.1);
+      color: var(--success);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .serial-marker {
+      background: transparent;
+      border: 0;
+    }
+
+    .marker-badge {
+      min-width: 34px;
+      min-height: 34px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      background: linear-gradient(135deg, #f59e0b, #f97316);
+      color: #fff;
+      font-weight: 800;
+      box-shadow: 0 10px 22px rgba(217, 119, 6, 0.35);
+      border: 2px solid rgba(255, 255, 255, 0.85);
+    }
+
+    .source-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-size: 0.84rem;
+      font-weight: 700;
+      max-width: min(100%, 320px);
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .app-hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1120px) {
+      .control-grid,
+      .details-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #map {
+        min-height: 640px;
+        height: 78svh;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100% - 18px, 1380px);
+        margin-top: 12px;
+        margin-bottom: 18px;
+      }
+
+      .hero,
+      .panel,
+      .controls {
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: clamp(1.55rem, 6vw, 2.2rem);
+      }
+
+      .hero p,
+      .panel-note,
+      .hint {
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
+      textarea {
+        min-height: 190px;
+      }
+
+      .button-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .button-row button {
+        min-width: 0;
+        font-size: 0.88rem;
+        padding: 9px 10px;
+      }
+
+      .stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .stat {
+        padding: 9px 8px;
+      }
+
+      .stat strong {
+        font-size: 0.88rem;
+      }
+
+      #map {
+        min-height: 720px;
+        height: 86svh;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .shell {
+        width: calc(100% - 12px);
+        gap: 12px;
+      }
+
+      .hero,
+      .panel,
+      .controls {
+        padding: 14px;
+      }
+
+      .button-row {
+        gap: 8px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .button-row button {
+        min-width: 0;
+        padding: 8px 8px;
+        font-size: 0.82rem;
+      }
+
+      .stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .stat {
+        padding: 8px 7px;
+      }
+
+      .stat small {
+        font-size: 0.6rem;
+      }
+
+      .stat strong {
+        font-size: 0.8rem;
+      }
+
+      .source-chip {
+        max-width: 100%;
+        font-size: 0.76rem;
+      }
+
+      #map {
+        min-height: 660px;
+        height: 84svh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="controls hero">
+      <div class="control-grid">
+        <div class="field-group">
+          <label for="fileInput">Upload LPM in pdf format For better results</label>
+          <input
+            id="fileInput"
+            type="file"
+            accept=".pdf,.docx,.xlsx,.xls,.txt,.csv,.json,image/*"
+          >
+          <div class="hint">
+            Supported: image, PDF, DOCX, XLSX, XLS, TXT, CSV, and JSON. For older `.doc` files, convert them to PDF or DOCX first.
+          </div>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button id="analyzeButton" class="primary">Analyze File</button>
+        <button id="plotButton" class="ghost">Plot Coordinates</button>
+        <button id="exportButton" class="secondary">Export Excel</button>
+        <button id="clearButton" class="secondary">Clear</button>
+      </div>
+
+    </section>
+
+    <section class="content">
+      <div class="panel map-panel">
+        <div class="panel-head">
+          <div>
+            <h2>LPM Locator on Ground</h2>
+          </div>
+          <span class="source-chip" id="sourceChip">No file yet</span>
+        </div>
+        <div id="map">
+          <div class="map-overlay" id="mapOverlay">
+            <div>
+              <strong>Loading the built-in hybrid map.</strong>
+              The page will draw the numbered points and polygon here automatically after coordinates are found.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="details-grid">
+        <div class="panel">
+          <details class="fold-panel">
+            <summary>Coordinate Rows</summary>
+            <div class="fold-body">
+              <div class="panel-note" style="margin-bottom: 12px;">Serial-wise output with both map coordinates and Easting/Northing style columns.</div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Serial</th>
+                      <th>Northing-Y</th>
+                      <th>Easting-X</th>
+                      <th>Latitude</th>
+                      <th>Longitude</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pointsTableBody">
+                    <tr>
+                      <td colspan="5" class="empty">No coordinate points yet.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+
+          <div style="height: 18px;"></div>
+
+          <div class="panel-head">
+            <div>
+              <h2>QR Details</h2>
+              <div class="panel-note">Each QR result is shown line by line below.</div>
+            </div>
+          </div>
+          <div id="qrResults" class="qr-list">
+            <div class="empty">No QR code detected yet.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="app-hidden" aria-hidden="true">
+    <strong id="pointsCount">0</strong>
+    <strong id="qrCount">0</strong>
+    <strong id="sourceType">Waiting</strong>
+    <strong id="urlCount">0</strong>
+    <strong id="summaryStatus">Idle</strong>
+    <textarea id="extractedText"></textarea>
+    <div id="statusBox"><div class="status-line">Waiting for a file.</div></div>
+    <div id="urlDetails"><div class="empty">No URL found in QR data yet.</div></div>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.10.0/mammoth.browser.min.js"></script>
+
+  <script type="module">
+    import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.149/build/pdf.min.mjs";
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.149/build/pdf.worker.min.mjs";
+
+    const state = {
+      map: null,
+      markers: [],
+      polygon: null,
+      polyline: null,
+      points: [],
+      qrEntries: [],
+      ocrWorkerPromise: null,
+      activeFileName: "",
+      sourceType: "Waiting"
+    };
+
+    const fileInput = document.getElementById("fileInput");
+    const analyzeButton = document.getElementById("analyzeButton");
+    const plotButton = document.getElementById("plotButton");
+    const exportButton = document.getElementById("exportButton");
+    const clearButton = document.getElementById("clearButton");
+    const extractedText = document.getElementById("extractedText");
+    const pointsTableBody = document.getElementById("pointsTableBody");
+    const qrResults = document.getElementById("qrResults");
+    const urlDetails = document.getElementById("urlDetails");
+    const statusBox = document.getElementById("statusBox");
+    const pointsCount = document.getElementById("pointsCount");
+    const qrCount = document.getElementById("qrCount");
+    const urlCount = document.getElementById("urlCount");
+    const sourceType = document.getElementById("sourceType");
+    const summaryStatus = document.getElementById("summaryStatus");
+    const sourceChip = document.getElementById("sourceChip");
+    const mapOverlay = document.getElementById("mapOverlay");
+
+    analyzeButton.addEventListener("click", () => analyzeSelectedFile());
+    plotButton.addEventListener("click", () => parseAndRenderCurrentText());
+    exportButton.addEventListener("click", () => exportAsExcel());
+    clearButton.addEventListener("click", () => resetAll());
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files?.[0]) {
+        analyzeSelectedFile();
+      }
+    });
+
+    initLeafletMap();
+    pushStatus("Waiting for a file.", "info", true);
+
+    function pushStatus(message, tone = "info", reset = false) {
+      if (reset) {
+        statusBox.innerHTML = "";
+      }
+
+      const line = document.createElement("div");
+      line.className = `status-line ${tone}`;
+      line.textContent = message;
+      statusBox.appendChild(line);
+      statusBox.scrollTop = statusBox.scrollHeight;
+    }
+
+    function setBusy(isBusy, label = "Working") {
+      analyzeButton.disabled = isBusy;
+      plotButton.disabled = isBusy;
+      exportButton.disabled = isBusy;
+      clearButton.disabled = isBusy;
+      summaryStatus.textContent = isBusy ? label : summaryStatus.textContent;
+    }
+
+    function showMapOverlay(message) {
+      mapOverlay.innerHTML = `<div><strong>${message}</strong></div>`;
+      mapOverlay.classList.remove("hidden");
+    }
+
+    function hideMapOverlay() {
+      mapOverlay.classList.add("hidden");
+    }
+
+    function setSourceTypeLabel(label) {
+      state.sourceType = label;
+      sourceType.textContent = label;
+      sourceChip.textContent = label + (state.activeFileName ? ` | ${state.activeFileName}` : "");
+    }
+
+    function resetOutputs(keepText = false) {
+      state.points = [];
+      state.qrEntries = [];
+      pointsCount.textContent = "0";
+      qrCount.textContent = "0";
+      urlCount.textContent = "0";
+      renderPointsTable([]);
+      renderQrResults([]);
+      renderUrlDetails([]);
+      clearMapOverlays();
+      if (!keepText) {
+        extractedText.value = "";
+      }
+    }
+
+    function resetAll() {
+      fileInput.value = "";
+      extractedText.value = "";
+      state.activeFileName = "";
+      state.sourceType = "Waiting";
+      setSourceTypeLabel("Waiting");
+      summaryStatus.textContent = "Idle";
+      sourceChip.textContent = "No file yet";
+      resetOutputs();
+      if (state.map) {
+        state.map.setView([20.5937, 78.9629], 5);
+      }
+      hideMapOverlay();
+      pushStatus("Waiting for a file.", "info", true);
+    }
+
+    async function analyzeSelectedFile() {
+      const file = fileInput.files?.[0];
+      if (!file) {
+        pushStatus("Choose a file before analyzing.", "error", true);
+        summaryStatus.textContent = "No file";
+        return;
+      }
+
+      resetOutputs();
+      state.activeFileName = file.name;
+      pushStatus(`Reading ${file.name} ...`, "info", true);
+      summaryStatus.textContent = "Analyzing";
+      setBusy(true, "Analyzing");
+
+      try {
+        const result = await analyzeFile(file);
+        extractedText.value = result.text.trim();
+        state.qrEntries = prepareQrEntries(result.qrEntries);
+        qrCount.textContent = String(state.qrEntries.length);
+        urlCount.textContent = String(countUniqueQrUrls(state.qrEntries));
+        renderQrResults(state.qrEntries);
+        renderUrlDetails([]);
+
+        if (!extractedText.value && state.qrEntries.length > 0) {
+          extractedText.value = state.qrEntries.map((entry) => entry.data).join("\n\n");
+        }
+
+        parseAndRenderCurrentText();
+
+        if (countUniqueQrUrls(state.qrEntries) > 0) {
+          pushStatus(`Found ${countUniqueQrUrls(state.qrEntries)} URL(s) in QR data. Loading linked page details ...`, "info");
+          renderUrlDetails(
+            flattenUrls(state.qrEntries).map((url) => ({
+              url,
+              finalUrl: url,
+              status: "Loading",
+              contentType: "",
+              title: "Loading preview ...",
+              description: "",
+              lines: ["Trying to read the linked page automatically."]
+            }))
+          );
+
+          await hydrateQrUrlDetails(state.qrEntries);
+          renderQrResults(state.qrEntries);
+          renderUrlDetails(flattenUrlDetails(state.qrEntries));
+
+          const loadedCount = flattenUrlDetails(state.qrEntries).filter((detail) => detail.status === "Loaded").length;
+          if (loadedCount > 0) {
+            pushStatus(`Loaded details for ${loadedCount} linked URL(s).`, "success");
+          } else {
+            pushStatus("Some sites blocked automatic reading. Their links are still listed below.", "info");
+          }
+        }
+
+        pushStatus("File analysis complete.", "success");
+      } catch (error) {
+        console.error(error);
+        pushStatus(error.message || "Could not analyze the file.", "error");
+        summaryStatus.textContent = "Failed";
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function analyzeFile(file) {
+      const fileName = file.name.toLowerCase();
+      const mimeType = file.type || "";
+
+      if (mimeType.startsWith("image/")) {
+        setSourceTypeLabel("Image");
+        return analyzeImage(file);
+      }
+
+      if (mimeType === "application/pdf" || fileName.endsWith(".pdf")) {
+        setSourceTypeLabel("PDF");
+        return analyzePdf(file);
+      }
+
+      if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith(".docx")) {
+        setSourceTypeLabel("DOCX");
+        return analyzeDocx(file);
+      }
+
+      if (
+        mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        mimeType === "application/vnd.ms-excel" ||
+        fileName.endsWith(".xlsx") ||
+        fileName.endsWith(".xls")
+      ) {
+        setSourceTypeLabel("Spreadsheet");
+        return analyzeSpreadsheet(file);
+      }
+
+      if (
+        mimeType.startsWith("text/") ||
+        fileName.endsWith(".txt") ||
+        fileName.endsWith(".csv") ||
+        fileName.endsWith(".json")
+      ) {
+        setSourceTypeLabel("Text");
+        const text = await file.text();
+        pushStatus("Plain text content loaded.", "success");
+        return { text, qrEntries: [] };
+      }
+
+      throw new Error("Unsupported file type. Use image, PDF, DOCX, XLSX, XLS, TXT, CSV, or JSON.");
+    }
+
+    async function analyzeImage(file) {
+      pushStatus("Preparing image for QR scan and OCR ...", "info");
+      const image = await loadImageFromFile(file);
+      const canvas = drawImageToCanvas(image, 2200);
+      const qrEntries = scanQrFromCanvas(canvas, "Image");
+      if (qrEntries.length > 0) {
+        pushStatus(`Found ${qrEntries.length} QR code(s) in the image.`, "success");
+      } else {
+        pushStatus("No QR code detected in the image.", "info");
+      }
+
+      pushStatus("Running OCR on the image ...", "info");
+      const text = await runOcr(canvas, "image");
+      pushStatus("Image OCR complete.", "success");
+      return { text, qrEntries };
+    }
+
+    async function analyzePdf(file) {
+      pushStatus("Loading PDF pages ...", "info");
+      const buffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+      const pageCanvases = [];
+      const extractedSections = [];
+      const qrEntries = [];
+
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        pushStatus(`Reading PDF page ${pageNumber} of ${pdf.numPages} ...`, "info");
+        const page = await pdf.getPage(pageNumber);
+        const textContent = await page.getTextContent();
+        const pageText = textItemsToLines(textContent.items);
+        if (pageText.trim()) {
+          extractedSections.push(`--- Page ${pageNumber} text ---\n${pageText.trim()}`);
+        }
+
+        const viewport = page.getViewport({ scale: 2.4 });
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+
+        await page.render({ canvasContext: context, viewport }).promise;
+        pageCanvases.push({ pageNumber, canvas });
+        qrEntries.push(...scanQrFromCanvas(canvas, `PDF page ${pageNumber}`));
+      }
+
+      let text = extractedSections.join("\n\n");
+      const hasEnoughCoordinates = parseCoordinates(text).length >= 3;
+
+      if (!hasEnoughCoordinates) {
+        pushStatus("PDF text was not enough, running OCR on the pages ...", "info");
+        for (const pageEntry of pageCanvases) {
+          const ocrText = await runOcr(pageEntry.canvas, `PDF page ${pageEntry.pageNumber}`);
+          if (ocrText.trim()) {
+            extractedSections.push(`--- Page ${pageEntry.pageNumber} OCR ---\n${ocrText.trim()}`);
+          }
+        }
+        text = extractedSections.join("\n\n");
+      } else {
+        pushStatus("PDF text layer already contains coordinate rows.", "success");
+      }
+
+      if (qrEntries.length > 0) {
+        pushStatus(`Found ${qrEntries.length} QR code(s) in the PDF.`, "success");
+      } else {
+        pushStatus("No QR code detected in the PDF pages.", "info");
+      }
+
+      return { text, qrEntries };
+    }
+
+    async function analyzeDocx(file) {
+      pushStatus("Extracting text from DOCX ...", "info");
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await window.mammoth.extractRawText({ arrayBuffer });
+      if (result.messages?.length) {
+        pushStatus(`DOCX notes: ${result.messages.length} conversion message(s).`, "info");
+      }
+      pushStatus("DOCX extraction complete.", "success");
+      return { text: result.value || "", qrEntries: [] };
+    }
+
+    async function analyzeSpreadsheet(file) {
+      if (!window.XLSX) {
+        throw new Error("Spreadsheet library could not be loaded.");
+      }
+
+      pushStatus("Extracting text from spreadsheet ...", "info");
+      const workbook = window.XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const sections = workbook.SheetNames.map((sheetName) => {
+        const sheet = workbook.Sheets[sheetName];
+        const csv = window.XLSX.utils.sheet_to_csv(sheet, { blankrows: false }).trim();
+        return `--- Sheet ${sheetName} ---\n${csv}`;
+      }).filter((section) => section.trim());
+
+      pushStatus("Spreadsheet extraction complete.", "success");
+      return { text: sections.join("\n\n"), qrEntries: [] };
+    }
+
+    async function ensureOcrWorker() {
+      if (!state.ocrWorkerPromise) {
+        state.ocrWorkerPromise = window.Tesseract.createWorker("eng");
+      }
+      return state.ocrWorkerPromise;
+    }
+
+    async function runOcr(source, label) {
+      const worker = await ensureOcrWorker();
+      const result = await worker.recognize(source);
+      const text = result?.data?.text || "";
+      pushStatus(`OCR finished for ${label}.`, "success");
+      return text;
+    }
+
+    function parseAndRenderCurrentText() {
+      const text = extractedText.value.trim();
+      const points = parseCoordinates(text);
+      const mappablePoints = points.filter((point) => isValidLatLng(point.latitude, point.longitude));
+      state.points = points;
+      pointsCount.textContent = String(points.length);
+      renderPointsTable(points);
+
+      if (mappablePoints.length >= 3) {
+        pushStatus(`Parsed ${points.length} coordinate row(s). ${mappablePoints.length} row(s) can be plotted on the map.`, "success");
+        summaryStatus.textContent = "Ready";
+      } else if (points.length > 0) {
+        pushStatus(`Parsed ${points.length} coordinate row(s). ${mappablePoints.length} row(s) have valid latitude/longitude for mapping.`, "info");
+        summaryStatus.textContent = "Partial";
+      } else {
+        pushStatus("No valid latitude/longitude rows were found in the text.", "error");
+        summaryStatus.textContent = "No points";
+      }
+
+      renderMapGeometry(mappablePoints);
+    }
+
+    function parseCoordinates(text) {
+      if (!text.trim()) {
+        return [];
+      }
+
+      const lines = text
+        .split(/\r?\n/)
+        .map((line) => normalizeLine(line))
+        .filter((line) => line && (/\d/.test(line) || inferCoordinateSchema(line)));
+
+      const points = [];
+      const seen = new Set();
+      let fallbackSerial = 1;
+      let activeSchema = null;
+
+      lines.forEach((line, sourceIndex) => {
+        const inferredSchema = inferCoordinateSchema(line);
+        if (inferredSchema && extractNumericValues(line).length <= 1) {
+          activeSchema = inferredSchema;
+          return;
+        }
+
+        const parsed = extractPointFromLine(line, fallbackSerial, sourceIndex, activeSchema);
+        if (!parsed) {
+          return;
+        }
+
+        const key = buildPointKey(parsed);
+        if (seen.has(key)) {
+          return;
+        }
+
+        seen.add(key);
+        points.push(parsed);
+        fallbackSerial = Math.max(fallbackSerial + 1, parsed.serial + 1);
+      });
+
+      return points.sort((a, b) => {
+        if (a.serial !== b.serial) {
+          return a.serial - b.serial;
+        }
+        return a.sourceIndex - b.sourceIndex;
+      });
+    }
+
+    function buildPointKey(point) {
+      if (isValidLatLng(point.latitude, point.longitude)) {
+        return `latlng:${point.latitude.toFixed(8)},${point.longitude.toFixed(8)}`;
+      }
+
+      if (hasProjectedCoordinates(point)) {
+        return `projected:${point.northingY.toFixed(3)},${point.eastingX.toFixed(3)}`;
+      }
+
+      return `row:${point.serial}:${point.sourceIndex}`;
+    }
+
+    function normalizeLine(line) {
+      return line
+        .replace(/[\u201C\u201D]/g, "\"")
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u2013\u2014]/g, "-")
+        .replace(/\u00A0/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function extractPointFromLine(line, fallbackSerial, sourceIndex, schema = null) {
+      const serialMatch = line.match(/^\s*(?:s(?:erial)?(?:\s*no)?\.?\s*[:=-]?\s*)?(\d{1,4})(?:\s*[\).:-])?\s+/i);
+      const serial = serialMatch ? Number(serialMatch[1]) : fallbackSerial;
+      const body = serialMatch ? line.slice(serialMatch[0].length).trim() : line;
+
+      const schemaPoint = schema ? parseBySchema(body, schema) : null;
+      const labelledProjected = parseLabelledProjected(body);
+      const combinedPoint = parseCombinedCoordinateRow(body);
+      const projectedData = mergeProjectedData(labelledProjected, schemaPoint, combinedPoint);
+
+      const dmsPoint = parseDmsCoordinates(body);
+      if (dmsPoint) {
+        return createPointRecord(
+          serial,
+          dmsPoint.latitude,
+          dmsPoint.longitude,
+          line,
+          sourceIndex,
+          projectedData
+        );
+      }
+
+      const hemispherePoint = parseHemisphereDecimals(body);
+      if (hemispherePoint) {
+        return createPointRecord(serial, hemispherePoint.latitude, hemispherePoint.longitude, line, sourceIndex, projectedData);
+      }
+
+      const labelledLatLng = parseLabelledDecimals(body);
+      if (labelledLatLng) {
+        return createPointRecord(serial, labelledLatLng.latitude, labelledLatLng.longitude, line, sourceIndex, projectedData);
+      }
+
+      const genericPoint = parseGenericDecimalPair(body);
+      if (genericPoint) {
+        return createPointRecord(serial, genericPoint.latitude, genericPoint.longitude, line, sourceIndex, projectedData);
+      }
+
+      return null;
+    }
+
+    function createPointRecord(serial, latitude, longitude, line, sourceIndex, extra = {}) {
+      return {
+        serial,
+        latitude: Number.isFinite(latitude) ? latitude : null,
+        longitude: Number.isFinite(longitude) ? longitude : null,
+        northingY: Number.isFinite(extra.northingY) ? extra.northingY : null,
+        eastingX: Number.isFinite(extra.eastingX) ? extra.eastingX : null,
+        line,
+        sourceIndex
+      };
+    }
+
+    function mergeProjectedData(...candidates) {
+      const projected = {};
+
+      candidates.forEach((candidate) => {
+        if (!candidate) {
+          return;
+        }
+
+        if (!Number.isFinite(projected.eastingX) && Number.isFinite(candidate.eastingX)) {
+          projected.eastingX = candidate.eastingX;
+        }
+
+        if (!Number.isFinite(projected.northingY) && Number.isFinite(candidate.northingY)) {
+          projected.northingY = candidate.northingY;
+        }
+      });
+
+      return projected;
+    }
+
+    function inferCoordinateSchema(line) {
+      const patterns = [
+        { field: "serial", regex: /\b(?:s(?:erial)?|sr\.?|s\.?no|serial\s*no|point\s*no)\b/i },
+        { field: "eastingX", regex: /\b(?:easting(?:\s*[- ]?\s*x)?|east(?:ing)?(?:\s*[- ]?\s*x)?|x[- ]?coord(?:inate)?)\b/i },
+        { field: "northingY", regex: /\b(?:northing(?:\s*[- ]?\s*y)?|north(?:ing)?(?:\s*[- ]?\s*y)?|y[- ]?coord(?:inate)?)\b/i },
+        { field: "latitude", regex: /\b(?:lat(?:itude)?)\b/i },
+        { field: "longitude", regex: /\b(?:lon(?:gitude)?|lng|long)\b/i }
+      ];
+
+      const matches = patterns
+        .map((pattern) => {
+          const match = line.match(pattern.regex);
+          return match ? { field: pattern.field, index: match.index ?? 0 } : null;
+        })
+        .filter(Boolean);
+
+      if (matches.length < 2) {
+        return null;
+      }
+
+      const fields = matches
+        .sort((left, right) => left.index - right.index)
+        .map((match) => match.field)
+        .filter((field, index, array) => array.indexOf(field) === index);
+
+      if (!fields.includes("latitude") && !fields.includes("longitude") && !fields.includes("eastingX") && !fields.includes("northingY")) {
+        return null;
+      }
+
+      return fields;
+    }
+
+    function parseBySchema(text, schema) {
+      const numericValues = extractNumericValues(text);
+      const fields = schema.filter((field) => field !== "serial");
+      if (!fields.length || numericValues.length < fields.length) {
+        return null;
+      }
+
+      const mapped = {};
+      fields.forEach((field, index) => {
+        mapped[field] = numericValues[index];
+      });
+
+      if (
+        mapped.latitude !== undefined &&
+        mapped.longitude !== undefined &&
+        !isValidLatLng(mapped.latitude, mapped.longitude)
+      ) {
+        const swapped = normalizeLatLng(mapped.latitude, mapped.longitude);
+        if (swapped) {
+          mapped.latitude = swapped.latitude;
+          mapped.longitude = swapped.longitude;
+        }
+      }
+
+      if (
+        mapped.latitude === undefined &&
+        mapped.longitude === undefined &&
+        mapped.northingY === undefined &&
+        mapped.eastingX === undefined
+      ) {
+        return null;
+      }
+
+      return mapped;
+    }
+
+    function parseDmsCoordinates(text) {
+      const dmsRegex = /(\d{1,3})\s*[\u00B0\u00BA]\s*(\d{1,2})\s*(?:['\u2019\u2032]\s*)?(\d{1,2}(?:[.,]\d+)?)?\s*(?:["\u201D\u2033]\s*)?([NSEW])/gi;
+      const matches = Array.from(text.matchAll(dmsRegex));
+      if (matches.length < 2) {
+        return null;
+      }
+
+      const latMatch = matches.find((entry) => /[NS]/i.test(entry[4]));
+      const lngMatch = matches.find((entry) => /[EW]/i.test(entry[4]));
+
+      if (!latMatch || !lngMatch) {
+        return null;
+      }
+
+      const latitude = dmsToDecimal(latMatch[1], latMatch[2], latMatch[3], latMatch[4]);
+      const longitude = dmsToDecimal(lngMatch[1], lngMatch[2], lngMatch[3], lngMatch[4]);
+
+      if (!isValidLatLng(latitude, longitude)) {
+        return null;
+      }
+
+      return { latitude, longitude };
+    }
+
+    function dmsToDecimal(degrees, minutes, seconds, hemisphere) {
+      const deg = Number(degrees);
+      const min = Number(minutes || 0);
+      const sec = Number(String(seconds || "0").replace(",", "."));
+      let decimal = deg + min / 60 + sec / 3600;
+      if (/[SW]/i.test(hemisphere)) {
+        decimal *= -1;
+      }
+      return decimal;
+    }
+
+    function parseHemisphereDecimals(text) {
+      const hemiRegex = /(-?\d{1,3}(?:[.,]\d+)?)\s*([NSEW])/gi;
+      const matches = Array.from(text.matchAll(hemiRegex));
+      if (matches.length < 2) {
+        return null;
+      }
+
+      let latitude = null;
+      let longitude = null;
+
+      matches.forEach((match) => {
+        const value = parseLocalizedNumber(match[1]);
+        const hemi = match[2].toUpperCase();
+        if ((hemi === "N" || hemi === "S") && latitude === null) {
+          latitude = hemi === "S" ? -Math.abs(value) : Math.abs(value);
+        }
+        if ((hemi === "E" || hemi === "W") && longitude === null) {
+          longitude = hemi === "W" ? -Math.abs(value) : Math.abs(value);
+        }
+      });
+
+      if (!isValidLatLng(latitude, longitude)) {
+        return null;
+      }
+
+      return { latitude, longitude };
+    }
+
+    function parseLabelledDecimals(text) {
+      const latMatch = text.match(/(?:lat(?:itude)?)\s*[:=]?\s*(-?\d{1,3}(?:[.,]\d+)?)/i);
+      const lngMatch = text.match(/(?:lon(?:gitude)?|lng|long)\s*[:=]?\s*(-?\d{1,3}(?:[.,]\d+)?)/i);
+
+      if (!latMatch || !lngMatch) {
+        return null;
+      }
+
+      const latitude = parseLocalizedNumber(latMatch[1]);
+      const longitude = parseLocalizedNumber(lngMatch[1]);
+
+      if (!isValidLatLng(latitude, longitude)) {
+        return null;
+      }
+
+      return { latitude, longitude };
+    }
+
+    function parseLabelledProjected(text) {
+      const eastingMatch = text.match(/(?:easting(?:\s*[- ]?\s*x)?|east(?:ing)?(?:\s*[- ]?\s*x)?|x[- ]?coord(?:inate)?)\s*[:=]?\s*(-?\d+(?:[.,]\d+)?)/i);
+      const northingMatch = text.match(/(?:northing(?:\s*[- ]?\s*y)?|north(?:ing)?(?:\s*[- ]?\s*y)?|y[- ]?coord(?:inate)?)\s*[:=]?\s*(-?\d+(?:[.,]\d+)?)/i);
+
+      if (!eastingMatch && !northingMatch) {
+        return null;
+      }
+
+      const eastingX = eastingMatch ? parseLocalizedNumber(eastingMatch[1]) : null;
+      const northingY = northingMatch ? parseLocalizedNumber(northingMatch[1]) : null;
+
+      return {
+        eastingX: Number.isFinite(eastingX) ? eastingX : null,
+        northingY: Number.isFinite(northingY) ? northingY : null
+      };
+    }
+
+    function parseCombinedCoordinateRow(text) {
+      const latLngValues = extractLatLngValues(text);
+      const projectedValues = extractNumericValues(text);
+      if (latLngValues.length < 2 && projectedValues.length < 2) {
+        return null;
+      }
+
+      const latLngPair = findLatLngPair(latLngValues);
+      const projectedPair = findProjectedPair(projectedValues);
+
+      if (!latLngPair && !projectedPair) {
+        return null;
+      }
+
+      return {
+        latitude: latLngPair?.latitude ?? null,
+        longitude: latLngPair?.longitude ?? null,
+        eastingX: projectedPair?.eastingX ?? null,
+        northingY: projectedPair?.northingY ?? null
+      };
+    }
+
+    function parseGenericDecimalPair(text) {
+      const values = extractLatLngValues(text);
+      const latLngPair = findLatLngPair(values);
+      if (!latLngPair) {
+        return null;
+      }
+
+      return {
+        latitude: latLngPair.latitude,
+        longitude: latLngPair.longitude
+      };
+    }
+
+    function extractNumericValues(text) {
+      return Array.from(text.matchAll(/-?\d+(?:[.,]\d+)?/g))
+        .map((match) => parseLocalizedNumber(match[0]))
+        .filter((value) => Number.isFinite(value));
+    }
+
+    function extractLatLngValues(text) {
+      return Array.from(text.matchAll(/-?\d{1,3}(?:[.,]\d+)/g))
+        .map((match) => parseLocalizedNumber(match[0]))
+        .filter((value) => Number.isFinite(value));
+    }
+
+    function findLatLngPair(values) {
+      for (let index = 0; index < values.length - 1; index += 1) {
+        const point = normalizeLatLng(values[index], values[index + 1]);
+        if (point) {
+          return {
+            latitude: point.latitude,
+            longitude: point.longitude,
+            indexes: [index, index + 1]
+          };
+        }
+      }
+
+      return null;
+    }
+
+    function findProjectedPair(values) {
+      for (let index = 0; index < values.length - 1; index += 1) {
+        const first = values[index];
+        const second = values[index + 1];
+        if (looksLikeProjectedCoordinate(first) && looksLikeProjectedCoordinate(second)) {
+          return {
+            eastingX: first,
+            northingY: second
+          };
+        }
+      }
+
+      return null;
+    }
+
+    function looksLikeProjectedCoordinate(value) {
+      return Number.isFinite(value) && Math.abs(value) > 180;
+    }
+
+    function parseLocalizedNumber(value) {
+      return Number(String(value).replace(",", "."));
+    }
+
+    function normalizeLatLng(first, second) {
+      if (isValidLatLng(first, second)) {
+        return { latitude: first, longitude: second };
+      }
+
+      if (isValidLatLng(second, first)) {
+        return { latitude: second, longitude: first };
+      }
+
+      return null;
+    }
+
+    function isValidLatLng(latitude, longitude) {
+      return (
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        Math.abs(latitude) <= 90 &&
+        Math.abs(longitude) <= 180
+      );
+    }
+
+    function renderPointsTable(points) {
+      if (!points.length) {
+        pointsTableBody.innerHTML = '<tr><td colspan="5" class="empty">No coordinate points yet.</td></tr>';
+        return;
+      }
+
+      pointsTableBody.innerHTML = points
+        .map((point) => `
+          <tr>
+            <td>${escapeHtml(String(point.serial))}</td>
+            <td>${formatCoordinateCell(point.northingY)}</td>
+            <td>${formatCoordinateCell(point.eastingX)}</td>
+            <td>${formatCoordinateCell(point.latitude)}</td>
+            <td>${formatCoordinateCell(point.longitude)}</td>
+          </tr>
+        `)
+        .join("");
+    }
+
+    function formatCoordinateCell(value) {
+      return Number.isFinite(value) ? value.toFixed(8) : "";
+    }
+
+    function hasProjectedCoordinates(point) {
+      return Number.isFinite(point.northingY) && Number.isFinite(point.eastingX);
+    }
+
+    function renderQrResults(entries) {
+      if (!entries.length) {
+        qrResults.innerHTML = '<div class="empty">No QR code detected yet.</div>';
+        return;
+      }
+
+      qrResults.innerHTML = entries
+        .map((entry, index) => {
+          const lines = qrDataToLines(entry.data)
+            .map((line) => `<li>${escapeHtml(line)}</li>`)
+            .join("");
+          const urlLinks = entry.urls?.length
+            ? `<div class="link-row">${entry.urls.map((url, urlIndex) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open URL ${urlIndex + 1}</a>`).join("")}</div>`
+            : "";
+
+          return `
+            <div class="qr-card">
+              <strong>QR ${index + 1} | ${escapeHtml(entry.source)}</strong>
+              <ol>${lines}</ol>
+              ${urlLinks}
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    function renderUrlDetails(details) {
+      if (!details.length) {
+        urlDetails.innerHTML = '<div class="empty">No URL found in QR data yet.</div>';
+        return;
+      }
+
+      urlDetails.innerHTML = details
+        .map((detail, index) => {
+          const lines = (detail.lines?.length ? detail.lines : ["No automatic preview was available."])
+            .map((line) => `<li>${escapeHtml(line)}</li>`)
+            .join("");
+          const href = escapeHtml(detail.finalUrl || detail.url);
+
+          return `
+            <div class="qr-card url-card">
+              <strong>Link ${index + 1} | ${escapeHtml(detail.status)}</strong>
+              <div class="link-row">
+                <a href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(truncateMiddle(detail.finalUrl || detail.url, 72))}</a>
+                ${detail.contentType ? `<span class="source-chip">${escapeHtml(detail.contentType)}</span>` : ""}
+              </div>
+              ${detail.title ? `<h3>${escapeHtml(detail.title)}</h3>` : ""}
+              ${detail.description ? `<p>${escapeHtml(detail.description)}</p>` : ""}
+              <ol class="url-lines">${lines}</ol>
+              ${detail.error ? `<div class="panel-note">${escapeHtml(detail.error)}</div>` : ""}
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    function qrDataToLines(data) {
+      const lines = data
+        .split(/\r?\n|[;|]/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      return lines.length ? lines : [data];
+    }
+
+    function dedupeQrEntries(entries) {
+      const seen = new Set();
+      return entries.filter((entry) => {
+        const key = entry.data.trim();
+        if (!key || seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function prepareQrEntries(entries) {
+      return dedupeQrEntries(entries).map((entry, index) => ({
+        id: `qr-${index + 1}`,
+        source: entry.source,
+        data: entry.data,
+        urls: extractUrls(entry.data),
+        urlDetails: []
+      }));
+    }
+
+    function extractUrls(text) {
+      const matches = text.match(/(?:https?:\/\/|www\.)[^\s<>"')\]]+/gi) || [];
+      const normalized = matches.map((url) => {
+        const cleanUrl = url.replace(/[),.;]+$/g, "");
+        return cleanUrl.startsWith("www.") ? `https://${cleanUrl}` : cleanUrl;
+      });
+      return [...new Set(normalized)];
+    }
+
+    function flattenUrls(entries) {
+      return [...new Set(entries.flatMap((entry) => entry.urls || []))];
+    }
+
+    function countUniqueQrUrls(entries) {
+      return flattenUrls(entries).length;
+    }
+
+    function flattenUrlDetails(entries) {
+      const seen = new Set();
+      return entries
+        .flatMap((entry) => entry.urlDetails || [])
+        .filter((detail) => {
+          const key = detail.finalUrl || detail.url;
+          if (!key || seen.has(key)) {
+            return false;
+          }
+          seen.add(key);
+          return true;
+        });
+    }
+
+    async function hydrateQrUrlDetails(entries) {
+      const cache = new Map();
+      await Promise.all(
+        entries.map(async (entry) => {
+          entry.urlDetails = await Promise.all(
+            (entry.urls || []).map((url) => {
+              if (!cache.has(url)) {
+                cache.set(url, fetchUrlDetails(url));
+              }
+              return cache.get(url);
+            })
+          );
+        })
+      );
+    }
+
+    async function fetchUrlDetails(url) {
+      try {
+        const response = await fetch(url, { redirect: "follow" });
+        const finalUrl = response.url || url;
+        const contentType = response.headers.get("content-type") || "unknown";
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        if (contentType.includes("application/json")) {
+          const json = await response.json();
+          return buildJsonUrlDetail(url, finalUrl, contentType, json);
+        }
+
+        const text = await response.text();
+        if (/text\/html/i.test(contentType) || /^\s*(<!doctype|<html)/i.test(text)) {
+          return buildHtmlUrlDetail(url, finalUrl, contentType, text);
+        }
+
+        return buildTextUrlDetail(url, finalUrl, contentType, text);
+      } catch (error) {
+        const message = error?.message || String(error);
+        const blocked = /fetch|network|cors|load/i.test(message);
+        return {
+          url,
+          finalUrl: url,
+          status: blocked ? "Blocked by site" : "Load error",
+          contentType: "",
+          title: "",
+          description: "",
+          lines: [
+            "Automatic reading was blocked by the website or browser security.",
+            "Open the link manually if you need the full page content."
+          ],
+          error: message
+        };
+      }
+    }
+
+    function buildHtmlUrlDetail(url, finalUrl, contentType, html) {
+      const doc = new DOMParser().parseFromString(html.slice(0, 200000), "text/html");
+      const title = readMeta(doc, "og:title", "property") || cleanSnippet(doc.title || "", 180) || new URL(finalUrl).hostname;
+      const description =
+        readMeta(doc, "description") ||
+        readMeta(doc, "og:description", "property") ||
+        firstTextMatch(doc, ["main p", "article p", "p"]);
+      const heading = firstTextMatch(doc, ["h1", "h2"]);
+      const canonical = doc.querySelector('link[rel="canonical"]')?.href || finalUrl;
+      const lines = [];
+
+      if (title) {
+        lines.push(`Title: ${title}`);
+      }
+      if (heading && heading !== title) {
+        lines.push(`Heading: ${heading}`);
+      }
+      if (description) {
+        lines.push(`Description: ${description}`);
+      }
+      lines.push(`Source: ${canonical}`);
+
+      return {
+        url,
+        finalUrl,
+        status: "Loaded",
+        contentType,
+        title,
+        description: description || "",
+        lines
+      };
+    }
+
+    function buildJsonUrlDetail(url, finalUrl, contentType, value) {
+      const title = pickStringValue(value, ["title", "name", "label"]) || new URL(finalUrl).hostname;
+      const description = pickStringValue(value, ["description", "message", "summary"]);
+      const lines = flattenJson(value).slice(0, 12);
+      if (title && !lines.some((line) => line.toLowerCase().startsWith("title:"))) {
+        lines.unshift(`Title: ${title}`);
+      }
+
+      return {
+        url,
+        finalUrl,
+        status: "Loaded",
+        contentType,
+        title,
+        description: description || "",
+        lines
+      };
+    }
+
+    function buildTextUrlDetail(url, finalUrl, contentType, text) {
+      const preview = cleanSnippet(text.replace(/\s+/g, " ").trim(), 420);
+      return {
+        url,
+        finalUrl,
+        status: "Loaded",
+        contentType,
+        title: new URL(finalUrl).hostname,
+        description: preview,
+        lines: [`Preview: ${preview}`]
+      };
+    }
+
+    function readMeta(doc, key, attribute = "name") {
+      return cleanSnippet(doc.querySelector(`meta[${attribute}="${key}"]`)?.content || "", 220);
+    }
+
+    function firstTextMatch(doc, selectors) {
+      for (const selector of selectors) {
+        const text = cleanSnippet(doc.querySelector(selector)?.textContent || "", 220);
+        if (text) {
+          return text;
+        }
+      }
+      return "";
+    }
+
+    function pickStringValue(value, keys) {
+      if (!value || typeof value !== "object") {
+        return "";
+      }
+
+      for (const key of keys) {
+        const candidate = value[key];
+        if (typeof candidate === "string" && candidate.trim()) {
+          return cleanSnippet(candidate, 220);
+        }
+      }
+
+      return "";
+    }
+
+    function flattenJson(value, prefix = "", rows = [], maxRows = 18) {
+      if (rows.length >= maxRows || value === null || value === undefined) {
+        return rows;
+      }
+
+      if (typeof value !== "object") {
+        if (prefix) {
+          rows.push(`${prefix}: ${cleanSnippet(String(value), 180)}`);
+        }
+        return rows;
+      }
+
+      const entries = Array.isArray(value)
+        ? value.slice(0, 6).map((item, index) => [`${prefix || "item"}[${index}]`, item])
+        : Object.entries(value).slice(0, 8).map(([key, item]) => [prefix ? `${prefix}.${key}` : key, item]);
+
+      entries.forEach(([key, item]) => {
+        if (rows.length >= maxRows) {
+          return;
+        }
+
+        if (item && typeof item === "object") {
+          flattenJson(item, key, rows, maxRows);
+        } else if (item !== undefined && item !== null && String(item).trim()) {
+          rows.push(`${key}: ${cleanSnippet(String(item), 180)}`);
+        }
+      });
+
+      return rows;
+    }
+
+    function scanQrFromCanvas(canvas, source) {
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const result = window.jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "attemptBoth"
+      });
+
+      if (!result?.data) {
+        return [];
+      }
+
+      return [
+        {
+          source,
+          data: result.data
+        }
+      ];
+    }
+
+    function textItemsToLines(items) {
+      const sorted = [...items].sort((left, right) => {
+        const yDifference = right.transform[5] - left.transform[5];
+        if (Math.abs(yDifference) > 3) {
+          return yDifference;
+        }
+        return left.transform[4] - right.transform[4];
+      });
+
+      const lines = [];
+      let currentLine = [];
+      let lastY = null;
+
+      sorted.forEach((item) => {
+        const y = item.transform[5];
+        if (lastY !== null && Math.abs(y - lastY) > 4) {
+          lines.push(currentLine.join(" ").replace(/\s+/g, " ").trim());
+          currentLine = [];
+        }
+        currentLine.push(item.str);
+        lastY = y;
+      });
+
+      if (currentLine.length) {
+        lines.push(currentLine.join(" ").replace(/\s+/g, " ").trim());
+      }
+
+      return lines.filter(Boolean).join("\n");
+    }
+
+    function initLeafletMap() {
+      if (state.map) {
+        return state.map;
+      }
+
+      if (!window.L) {
+        showMapOverlay("Map library could not be loaded.");
+        pushStatus("Leaflet could not be loaded.", "error");
+        return null;
+      }
+
+      try {
+        state.map = window.L.map("map", {
+          zoomControl: true,
+          attributionControl: true,
+          preferCanvas: true,
+          maxZoom: 18,
+          minZoom: 2,
+          zoomSnap: 0.5,
+          zoomDelta: 0.5
+        });
+
+        state.map.createPane("labels");
+        state.map.getPane("labels").style.zIndex = "650";
+        state.map.getPane("labels").style.pointerEvents = "none";
+
+        window.L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxNativeZoom: 18,
+            maxZoom: 18,
+            attribution: "Imagery &copy; Esri"
+          }
+        ).addTo(state.map);
+
+        window.L.tileLayer(
+          "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxNativeZoom: 18,
+            maxZoom: 18,
+            pane: "labels",
+            attribution: "Labels &copy; Esri"
+          }
+        ).addTo(state.map);
+
+        state.map.setView([20.5937, 78.9629], 5);
+        hideMapOverlay();
+
+        window.setTimeout(() => state.map?.invalidateSize(), 120);
+        window.addEventListener("resize", () => state.map?.invalidateSize());
+        window.addEventListener("orientationchange", () => {
+          window.setTimeout(() => state.map?.invalidateSize(), 180);
+        });
+
+        return state.map;
+      } catch (error) {
+        console.error(error);
+        showMapOverlay("The built-in map could not be initialized.");
+        pushStatus("Map initialization failed.", "error");
+        return null;
+      }
+    }
+
+    function clearMapOverlays() {
+      state.markers.forEach((marker) => marker.remove());
+      state.markers = [];
+
+      if (state.polygon) {
+        state.polygon.remove();
+        state.polygon = null;
+      }
+
+      if (state.polyline) {
+        state.polyline.remove();
+        state.polyline = null;
+      }
+    }
+
+    function renderMapGeometry(points) {
+      clearMapOverlays();
+      const map = initLeafletMap();
+      if (!map) {
+        return;
+      }
+
+      if (!points.length) {
+        map.setView([20.5937, 78.9629], 5);
+        return;
+      }
+
+      const path = points.map((point) => [point.latitude, point.longitude]);
+
+      points.forEach((point) => {
+        const marker = window.L.marker([point.latitude, point.longitude], {
+          icon: window.L.divIcon({
+            className: "serial-marker",
+            html: `<div class="marker-badge">${escapeHtml(String(point.serial))}</div>`,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18]
+          })
+        });
+
+        marker
+          .addTo(map)
+          .bindPopup(
+            `<strong>Point ${escapeHtml(String(point.serial))}</strong><br>Lat: ${point.latitude.toFixed(8)}<br>Lng: ${point.longitude.toFixed(8)}`
+          );
+        state.markers.push(marker);
+      });
+
+      if (points.length >= 3) {
+        state.polygon = window.L.polygon(path, {
+          color: "#f97316",
+          weight: 3,
+          fillColor: "#f59e0b",
+          fillOpacity: 0.22
+        }).addTo(map);
+      } else if (points.length === 2) {
+        state.polyline = window.L.polyline(path, {
+          color: "#f97316",
+          weight: 3
+        }).addTo(map);
+      }
+
+      if (points.length === 1) {
+        map.setView(path[0], 16);
+      } else {
+        map.fitBounds(window.L.latLngBounds(path), {
+          padding: [28, 28],
+          maxZoom: 17
+        });
+      }
+
+      hideMapOverlay();
+      window.setTimeout(() => map.invalidateSize(), 50);
+    }
+
+    function exportAsExcel() {
+      if (!window.XLSX) {
+        pushStatus("Excel export library could not be loaded.", "error");
+        return;
+      }
+
+      const rawText = extractedText.value.trim();
+      if (!rawText && !state.points.length && !state.qrEntries.length) {
+        pushStatus("Nothing is available to export yet.", "error");
+        return;
+      }
+
+      const workbook = window.XLSX.utils.book_new();
+
+      appendSheetFromRows(workbook, "Summary", [
+        { field: "File", value: state.activeFileName || "Manual text" },
+        { field: "Source Type", value: state.sourceType },
+        { field: "Points", value: state.points.length },
+        { field: "QR Codes", value: state.qrEntries.length },
+        { field: "QR URLs", value: countUniqueQrUrls(state.qrEntries) },
+        { field: "Exported At", value: new Date().toLocaleString() }
+      ], ["field", "value"]);
+
+      appendSheetFromRows(
+        workbook,
+        "Coordinates",
+        state.points.map((point) => ({
+          "Northing-Y": Number.isFinite(point.northingY) ? point.northingY : "",
+          "Easting-X": Number.isFinite(point.eastingX) ? point.eastingX : "",
+          Latitude: Number.isFinite(point.latitude) ? point.latitude : "",
+          Longitude: Number.isFinite(point.longitude) ? point.longitude : ""
+        })),
+        ["Northing-Y", "Easting-X", "Latitude", "Longitude"]
+      );
+
+      appendSheetFromRows(
+        workbook,
+        "QR Details",
+        state.qrEntries.flatMap((entry, index) => {
+          if (!entry.urls.length) {
+            return [{
+              qrIndex: index + 1,
+              source: entry.source,
+              qrData: entry.data,
+              url: "",
+              urlStatus: "",
+              urlTitle: "",
+              urlDescription: "",
+              urlLines: ""
+            }];
+          }
+
+          if (!entry.urlDetails.length) {
+            return entry.urls.map((url) => ({
+              qrIndex: index + 1,
+              source: entry.source,
+              qrData: entry.data,
+              url,
+              urlStatus: "Pending or blocked",
+              urlTitle: "",
+              urlDescription: "",
+              urlLines: ""
+            }));
+          }
+
+          return entry.urlDetails.map((detail) => ({
+            qrIndex: index + 1,
+            source: entry.source,
+            qrData: entry.data,
+            url: detail.finalUrl || detail.url,
+            urlStatus: detail.status,
+            urlTitle: detail.title || "",
+            urlDescription: detail.description || "",
+            urlLines: (detail.lines || []).join(" | ")
+          }));
+        }),
+        ["qrIndex", "source", "qrData", "url", "urlStatus", "urlTitle", "urlDescription", "urlLines"]
+      );
+
+      appendSheetFromRows(
+        workbook,
+        "Document Lines",
+        rawText
+          ? rawText.split(/\r?\n/).map((line, index) => ({
+            lineNo: index + 1,
+            text: line
+          }))
+          : [],
+        ["lineNo", "text"]
+      );
+
+      const baseName = sanitizeFileName(
+        (state.activeFileName || "document-extract").replace(/\.[^.]+$/, "")
+      );
+      window.XLSX.writeFile(workbook, `${baseName}-extract.xlsx`);
+      pushStatus("Excel file exported successfully.", "success");
+    }
+
+    function appendSheetFromRows(workbook, sheetName, rows, headers) {
+      const sheet = rows.length
+        ? window.XLSX.utils.json_to_sheet(rows)
+        : window.XLSX.utils.aoa_to_sheet([headers]);
+      window.XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
+    }
+
+    function sanitizeFileName(value) {
+      return value.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-").replace(/\s+/g, "-");
+    }
+
+    function truncateMiddle(value, maxLength) {
+      if (value.length <= maxLength) {
+        return value;
+      }
+
+      const side = Math.max(8, Math.floor((maxLength - 3) / 2));
+      return `${value.slice(0, side)}...${value.slice(-side)}`;
+    }
+
+    function cleanSnippet(value, maxLength = 220) {
+      const normalized = String(value).replace(/\s+/g, " ").trim();
+      return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 3)}...` : normalized;
+    }
+
+    function drawImageToCanvas(image, maxDimension) {
+      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return canvas;
+    }
+
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(image);
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("Image could not be loaded."));
+        };
+        image.src = url;
+      });
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    window.addEventListener("beforeunload", async () => {
+      if (state.ocrWorkerPromise) {
+        const worker = await state.ocrWorkerPromise;
+        await worker.terminate();
+      }
+    });
+  </script>
+</body>
+</html>
