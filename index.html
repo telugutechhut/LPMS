@@ -1018,6 +1018,179 @@
       }
     }
 
+
+    /* Compact floating panel: show only Upload LPM, Export to Excel, and Clear */
+    .controls.hero {
+      top: 10px;
+      left: 10px;
+      width: 225px;
+      max-height: none;
+      overflow: visible;
+      padding: 8px;
+      gap: 6px;
+      border-radius: 12px;
+    }
+
+    .controls .field-group { gap: 4px; }
+    .controls label { font-size: 11px; }
+
+    /* Extra-compact bottom information drawer */
+    .details-grid {
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      max-height: min(18dvh, 150px);
+      border-radius: 12px;
+    }
+
+    .details-grid > .panel {
+      padding: 6px 8px;
+      border-radius: 12px;
+    }
+
+    .details-grid .fold-panel {
+      border-radius: 8px;
+    }
+
+    .details-grid .fold-panel summary {
+      padding: 5px 8px;
+      font-size: 10px;
+      line-height: 1.2;
+    }
+
+    .details-grid .fold-body {
+      padding: 0 6px 6px;
+    }
+
+    .details-grid .panel-note {
+      margin-bottom: 4px !important;
+      font-size: 10px;
+      line-height: 1.25;
+    }
+
+    .details-grid .panel-head {
+      margin: 0 0 4px;
+      gap: 4px;
+    }
+
+    .details-grid .panel-head h2 {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .details-grid > .panel > div[style*="height: 18px"] {
+      height: 5px !important;
+    }
+
+    .details-grid .table-wrap {
+      max-height: 75px;
+      overflow: auto;
+    }
+
+    .details-grid th,
+    .details-grid td {
+      padding: 3px 5px;
+      font-size: 9px;
+      line-height: 1.2;
+    }
+
+    #qrResults {
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 5px;
+      max-height: 58px;
+    }
+
+    .details-grid .qr-card {
+      padding: 5px 7px;
+      border-radius: 8px;
+    }
+
+    .details-grid .qr-card strong {
+      margin-bottom: 2px;
+      font-size: 10px;
+    }
+
+    .details-grid .qr-card ol,
+    .details-grid .qr-card p,
+    .details-grid .url-lines {
+      font-size: 9px;
+      line-height: 1.2;
+    }
+
+    @media (max-width: 760px) {
+      .details-grid {
+        left: 6px;
+        right: 6px;
+        bottom: 6px;
+        max-height: min(18dvh, 135px);
+        border-radius: 10px;
+      }
+
+      .details-grid > .panel {
+        padding: 5px 6px;
+      }
+
+      #qrResults {
+        max-height: 48px;
+      }
+
+      .map-panel .panel-head {
+        bottom: calc(min(18dvh, 135px) + 16px);
+      }
+    }
+
+    .controls .hint { display: none !important; }
+    .controls input[type="file"] {
+      width: 100%;
+      padding: 5px;
+      border-radius: 7px;
+      font-size: 10px;
+    }
+    .controls input[type="file"]::file-selector-button {
+      margin-right: 5px;
+      padding: 5px 7px;
+      border-radius: 6px;
+      font-size: 10px;
+    }
+
+    /* Keep these elements in the DOM because the existing JavaScript uses them,
+       but hide their buttons from the floating panel. File selection analyzes
+       the uploaded LPM automatically. */
+    #analyzeButton, #plotButton { display: none !important; }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5px;
+    }
+    .button-row button {
+      min-height: 28px;
+      padding: 5px 6px;
+      border-radius: 7px;
+      font-size: 10px;
+      line-height: 1.1;
+    }
+    .button-row button:hover { transform: none; }
+
+    @media (max-width: 760px) {
+      .controls.hero {
+        top: 8px;
+        left: 8px;
+        width: 195px;
+        max-height: none;
+        padding: 7px;
+        gap: 5px;
+      }
+      .controls label { font-size: 10px; }
+      .controls input[type="file"] { font-size: 9px; }
+      .button-row button {
+        min-height: 26px;
+        padding: 4px 5px;
+        font-size: 9px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1025,7 +1198,7 @@
     <section class="controls hero">
       <div class="control-grid">
         <div class="field-group">
-          <label for="fileInput">Upload LPM in pdf format For better results</label>
+          <label for="fileInput">Upload LPM</label>
           <input
             id="fileInput"
             type="file"
@@ -1040,7 +1213,7 @@
       <div class="button-row">
         <button id="analyzeButton" class="primary">Analyze File</button>
         <button id="plotButton" class="ghost">Plot Coordinates</button>
-        <button id="exportButton" class="secondary">Export Excel</button>
+        <button id="exportButton" class="secondary">Export to Excel</button>
         <button id="clearButton" class="secondary">Clear</button>
       </div>
 
@@ -1066,33 +1239,6 @@
 
       <div class="details-grid">
         <div class="panel">
-          <details class="fold-panel">
-            <summary>Coordinate Rows</summary>
-            <div class="fold-body">
-              <div class="panel-note" style="margin-bottom: 12px;">Serial-wise output with both map coordinates and Easting/Northing style columns.</div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Serial</th>
-                      <th>Northing-Y</th>
-                      <th>Easting-X</th>
-                      <th>Latitude</th>
-                      <th>Longitude</th>
-                    </tr>
-                  </thead>
-                  <tbody id="pointsTableBody">
-                    <tr>
-                      <td colspan="5" class="empty">No coordinate points yet.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </details>
-
-          <div style="height: 18px;"></div>
-
           <div class="panel-head">
             <div>
               <h2>QR Details</h2>
@@ -1108,6 +1254,7 @@
   </div>
 
   <div class="app-hidden" aria-hidden="true">
+    <table><tbody id="pointsTableBody"></tbody></table>
     <strong id="pointsCount">0</strong>
     <strong id="qrCount">0</strong>
     <strong id="sourceType">Waiting</strong>
