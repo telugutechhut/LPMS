@@ -675,6 +675,349 @@
         height: 84svh;
       }
     }
+
+    /* Full-screen field-map workspace */
+    html, body {
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #101923;
+    }
+
+    body {
+      font-family: "Aptos", "Segoe UI", sans-serif;
+    }
+
+    .shell {
+      width: 100%;
+      height: 100dvh;
+      min-height: 100dvh;
+      margin: 0;
+      display: block;
+    }
+
+    .content {
+      display: contents;
+    }
+
+    .map-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      width: 100vw;
+      height: 100dvh;
+      padding: 0 !important;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      background: #172330;
+    }
+
+    .map-panel .panel-head {
+      position: absolute;
+      z-index: 650;
+      top: 18px;
+      right: 20px;
+      margin: 0;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .map-panel .panel-head h2 {
+      display: inline-flex;
+      margin: 0;
+      padding: 10px 14px;
+      color: #f8fafc;
+      font-size: 0.9rem;
+      letter-spacing: .02em;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 14px;
+      background: rgba(12, 22, 32, .48);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 8px 28px rgba(0,0,0,.18);
+    }
+
+    .source-chip {
+      color: #ecfeff;
+      background: rgba(12, 22, 32, .56);
+      border: 1px solid rgba(255,255,255,.2);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 8px 28px rgba(0,0,0,.18);
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      border-radius: 0;
+      background: #172330;
+    }
+
+    .leaflet-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Floating glass command palette */
+    .controls.hero {
+      position: fixed;
+      z-index: 1000;
+      top: 18px;
+      left: 18px;
+      width: min(350px, calc(100vw - 36px));
+      max-height: calc(100dvh - 36px);
+      overflow: auto;
+      padding: 16px;
+      display: grid;
+      gap: 13px;
+      color: #f8fafc;
+      border: 1px solid rgba(255,255,255,.24);
+      border-radius: 22px;
+      background: rgba(10, 22, 34, .58);
+      box-shadow: 0 18px 55px rgba(0,0,0,.28);
+      backdrop-filter: blur(22px) saturate(145%);
+      -webkit-backdrop-filter: blur(22px) saturate(145%);
+    }
+
+    .controls.hero::after { display: none; }
+
+    .controls .field-group {
+      gap: 7px;
+    }
+
+    .controls label {
+      color: #f8fafc;
+      font-size: .88rem;
+      letter-spacing: .01em;
+    }
+
+    .controls .hint {
+      color: rgba(226,232,240,.76);
+      font-size: .76rem;
+    }
+
+    .controls input[type="file"] {
+      padding: 9px;
+      color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 13px;
+      background: rgba(255,255,255,.1);
+      font-size: .78rem;
+    }
+
+    .controls input[type="file"]::file-selector-button {
+      margin-right: 9px;
+      padding: 7px 10px;
+      color: #f8fafc;
+      border: 0;
+      border-radius: 9px;
+      background: rgba(255,255,255,.18);
+      cursor: pointer;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .button-row button {
+      min-height: 40px;
+      padding: 9px 10px;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 12px;
+      color: #f8fafc;
+      font-size: .82rem;
+      font-weight: 700;
+      background: rgba(255,255,255,.12);
+      box-shadow: 0 5px 16px rgba(0,0,0,.12);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .button-row button:hover {
+      transform: translateY(-2px);
+      background: rgba(255,255,255,.22);
+      box-shadow: 0 10px 22px rgba(0,0,0,.2);
+    }
+
+    .button-row .primary {
+      background: rgba(245,158,11,.82);
+      border-color: rgba(255,255,255,.32);
+    }
+
+    .button-row .ghost {
+      background: rgba(13,148,136,.7);
+      color: #fff;
+    }
+
+    .button-row .secondary {
+      background: rgba(255,255,255,.13);
+      color: #f8fafc;
+    }
+
+    /* Secondary information stays accessible in a compact bottom glass drawer */
+    .details-grid {
+      position: fixed;
+      z-index: 950;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      display: block;
+      max-height: min(34dvh, 310px);
+      overflow: auto;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 20px;
+      background: rgba(10, 22, 34, .62);
+      box-shadow: 0 16px 45px rgba(0,0,0,.24);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+    }
+
+    .details-grid > .panel {
+      padding: 12px 14px;
+      color: #f8fafc;
+      border: 0;
+      border-radius: 20px;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .details-grid .panel h2,
+    .details-grid .panel-note,
+    .details-grid .fold-panel summary {
+      color: #f8fafc;
+    }
+
+    .fold-panel {
+      border-color: rgba(255,255,255,.15);
+      background: rgba(255,255,255,.08);
+    }
+
+    .fold-panel summary {
+      padding: 10px 12px;
+      font-size: .86rem;
+    }
+
+    .fold-body { padding: 0 10px 10px; }
+
+    .details-grid .table-wrap,
+    .details-grid .qr-card,
+    .details-grid .empty {
+      color: #e2e8f0;
+      border-color: rgba(255,255,255,.14);
+      background: rgba(255,255,255,.08);
+    }
+
+    .details-grid th {
+      color: #cbd5e1;
+      background: rgba(15,23,42,.92);
+    }
+
+    .details-grid td {
+      color: #e2e8f0;
+      border-color: rgba(255,255,255,.1);
+    }
+
+    .details-grid .qr-card ol,
+    .details-grid .url-lines,
+    .details-grid .qr-card p {
+      color: #cbd5e1;
+    }
+
+    #qrResults {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px;
+      max-height: 145px;
+      overflow: auto;
+    }
+
+    .details-grid .qr-card {
+      padding: 10px;
+      border-radius: 13px;
+    }
+
+    .details-grid .qr-card strong {
+      margin-bottom: 5px;
+      font-size: .8rem;
+    }
+
+    .details-grid .qr-card ol {
+      font-size: .78rem;
+      line-height: 1.4;
+    }
+
+    .map-overlay {
+      z-index: 500;
+      pointer-events: none;
+    }
+
+    @media (max-width: 760px) {
+      .controls.hero {
+        top: 10px;
+        left: 10px;
+        width: min(300px, calc(100vw - 20px));
+        max-height: 48dvh;
+        padding: 12px;
+        gap: 10px;
+        border-radius: 18px;
+      }
+
+      .controls .hint { display: none; }
+
+      .map-panel .panel-head {
+        top: auto;
+        right: 10px;
+        bottom: calc(min(34dvh, 310px) + 28px);
+        margin: 0;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+      }
+
+      .map-panel .panel-head h2 {
+        font-size: .75rem;
+        padding: 8px 10px;
+      }
+
+      .source-chip {
+        font-size: .7rem;
+        padding: 5px 8px;
+      }
+
+      .details-grid {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        max-height: 34dvh;
+        border-radius: 17px;
+      }
+
+      .details-grid > .panel { padding: 9px 10px; }
+      #qrResults { max-height: 100px; }
+    }
+
+    @media (max-width: 420px) {
+      .controls.hero {
+        width: min(270px, calc(100vw - 20px));
+      }
+
+      .button-row button {
+        min-height: 36px;
+        padding: 8px 7px;
+        font-size: .75rem;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -2052,17 +2395,38 @@
         }).addTo(map);
       }
 
+      // Recalculate the map viewport before fitting the plotted coordinates.
+      // This is important because the map is displayed edge-to-edge and its
+      // container can resize after the first render or when the screen rotates.
+      map.invalidateSize({ pan: false });
+
       if (points.length === 1) {
-        map.setView(path[0], 16);
+        // Keep a single point comfortably visible without zooming to street level.
+        map.setView(path[0], 15, { animate: false });
       } else {
-        map.fitBounds(window.L.latLngBounds(path), {
-          padding: [28, 28],
-          maxZoom: 17
+        const bounds = window.L.latLngBounds(path);
+        map.fitBounds(bounds, {
+          paddingTopLeft: [72, 72],
+          paddingBottomRight: [72, 72],
+          maxZoom: 15,
+          animate: false
         });
       }
 
       hideMapOverlay();
-      window.setTimeout(() => map.invalidateSize(), 50);
+      // Refit once the browser has completed layout so every plotted point
+      // remains inside the visible map area on desktop and mobile screens.
+      window.requestAnimationFrame(() => {
+        map.invalidateSize({ pan: false });
+        if (points.length > 1) {
+          map.fitBounds(window.L.latLngBounds(path), {
+            paddingTopLeft: [72, 72],
+            paddingBottomRight: [72, 72],
+            maxZoom: 15,
+            animate: false
+          });
+        }
+      });
     }
 
     function exportAsExcel() {
