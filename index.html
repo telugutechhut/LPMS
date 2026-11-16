@@ -1191,6 +1191,119 @@
       }
     }
 
+  
+    /* Requested compact map and QR-details controls */
+    .map-panel .panel-head {
+      display: none !important;
+    }
+
+    .marker-badge {
+      min-width: 22px !important;
+      min-height: 22px !important;
+      padding: 2px 5px !important;
+      font-size: 10px !important;
+      line-height: 1 !important;
+      border-width: 1px !important;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, .25) !important;
+    }
+
+    #lpmDetailsButton {
+      position: fixed;
+      z-index: 1100;
+      right: 14px;
+      bottom: 12px;
+      min-height: 30px;
+      padding: 7px 11px;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 9px;
+      color: #fff;
+      background: rgba(13, 148, 136, .96);
+      font-size: 11px;
+      box-shadow: 0 5px 16px rgba(0,0,0,.22);
+    }
+
+    #detailsDrawer {
+      position: fixed;
+      z-index: 1050;
+      left: 8px;
+      right: 8px;
+      bottom: 52px;
+      max-height: 25dvh;
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 12px;
+      color: #f8fafc;
+      background: rgba(10, 22, 34, .94);
+      box-shadow: 0 16px 45px rgba(0,0,0,.28);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    #detailsDrawer[hidden],
+    #lpmDetailsButton[hidden] {
+      display: none !important;
+    }
+
+    #detailsDrawer > .panel {
+      padding: 9px;
+      color: #f8fafc;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    #detailsDrawer .panel-head {
+      display: block;
+      margin: 0 0 6px;
+    }
+
+    #detailsDrawer h2,
+    #detailsDrawer .panel-note,
+    #detailsDrawer .drawer-url-heading {
+      color: #f8fafc;
+    }
+
+    #detailsDrawer .drawer-url-heading {
+      margin: 8px 0 5px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    #detailsDrawer #qrResults,
+    #detailsDrawer #urlDetails {
+      max-height: 100px;
+      overflow: auto;
+    }
+
+    #detailsDrawer .qr-card,
+    #detailsDrawer .empty {
+      color: #e2e8f0;
+      border-color: rgba(255,255,255,.14);
+      background: rgba(255,255,255,.08);
+    }
+
+    #detailsDrawer .qr-card ol,
+    #detailsDrawer .url-lines,
+    #detailsDrawer .qr-card p {
+      color: #cbd5e1;
+    }
+
+    @media (max-width: 760px) {
+      #lpmDetailsButton {
+        right: 8px;
+        bottom: 8px;
+        min-height: 27px;
+        padding: 6px 9px;
+        font-size: 10px;
+      }
+
+      #detailsDrawer {
+        bottom: 43px;
+        max-height: 24dvh;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1221,12 +1334,7 @@
 
     <section class="content">
       <div class="panel map-panel">
-        <div class="panel-head">
-          <div>
-            <h2>LPM Locator on Ground</h2>
-          </div>
-          <span class="source-chip" id="sourceChip">No file yet</span>
-        </div>
+        <!-- Floating map title and source/file label removed -->
         <div id="map">
           <div class="map-overlay" id="mapOverlay">
             <div>
@@ -1237,16 +1345,19 @@
         </div>
       </div>
 
-      <div class="details-grid">
+      <button id="lpmDetailsButton" type="button" hidden>Show LPM Details</button>
+
+      <div class="details-grid" id="detailsDrawer" hidden>
         <div class="panel">
           <div class="panel-head">
-            <div>
-              <h2>QR Details</h2>
-              <div class="panel-note">Each QR result is shown line by line below.</div>
-            </div>
+            <h2>QR Details</h2>
           </div>
           <div id="qrResults" class="qr-list">
             <div class="empty">No QR code detected yet.</div>
+          </div>
+          <div class="drawer-url-heading">URL Information</div>
+          <div id="urlDetails">
+            <div class="empty">No URL found in QR data yet.</div>
           </div>
         </div>
       </div>
@@ -1262,7 +1373,6 @@
     <strong id="summaryStatus">Idle</strong>
     <textarea id="extractedText"></textarea>
     <div id="statusBox"><div class="status-line">Waiting for a file.</div></div>
-    <div id="urlDetails"><div class="empty">No URL found in QR data yet.</div></div>
   </div>
 
   <script
@@ -1301,6 +1411,15 @@
     const pointsTableBody = document.getElementById("pointsTableBody");
     const qrResults = document.getElementById("qrResults");
     const urlDetails = document.getElementById("urlDetails");
+    const lpmDetailsButton = document.getElementById("lpmDetailsButton");
+    const detailsDrawer = document.getElementById("detailsDrawer");
+
+    lpmDetailsButton.addEventListener("click", () => {
+      detailsDrawer.hidden = !detailsDrawer.hidden;
+      lpmDetailsButton.textContent = detailsDrawer.hidden
+        ? "Show LPM Details"
+        : "Hide LPM Details";
+    });
     const statusBox = document.getElementById("statusBox");
     const pointsCount = document.getElementById("pointsCount");
     const qrCount = document.getElementById("qrCount");
@@ -1355,12 +1474,17 @@
     function setSourceTypeLabel(label) {
       state.sourceType = label;
       sourceType.textContent = label;
-      sourceChip.textContent = label + (state.activeFileName ? ` | ${state.activeFileName}` : "");
+      if (sourceChip) {
+        sourceChip.textContent = label + (state.activeFileName ? ` | ${state.activeFileName}` : "");
+      }
     }
 
     function resetOutputs(keepText = false) {
       state.points = [];
       state.qrEntries = [];
+      lpmDetailsButton.hidden = true;
+      detailsDrawer.hidden = true;
+      lpmDetailsButton.textContent = "Show LPM Details";
       pointsCount.textContent = "0";
       qrCount.textContent = "0";
       urlCount.textContent = "0";
@@ -1380,7 +1504,7 @@
       state.sourceType = "Waiting";
       setSourceTypeLabel("Waiting");
       summaryStatus.textContent = "Idle";
-      sourceChip.textContent = "No file yet";
+      if (sourceChip) sourceChip.textContent = "No file yet";
       resetOutputs();
       if (state.map) {
         state.map.setView([20.5937, 78.9629], 5);
@@ -1407,6 +1531,9 @@
         const result = await analyzeFile(file);
         extractedText.value = result.text.trim();
         state.qrEntries = prepareQrEntries(result.qrEntries);
+        lpmDetailsButton.hidden = state.qrEntries.length === 0;
+        detailsDrawer.hidden = true;
+        lpmDetailsButton.textContent = "Show LPM Details";
         qrCount.textContent = String(state.qrEntries.length);
         urlCount.textContent = String(countUniqueQrUrls(state.qrEntries));
         renderQrResults(state.qrEntries);
@@ -2515,8 +2642,8 @@
           icon: window.L.divIcon({
             className: "serial-marker",
             html: `<div class="marker-badge">${escapeHtml(String(point.serial))}</div>`,
-            iconSize: [36, 36],
-            iconAnchor: [18, 18]
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
           })
         });
 
